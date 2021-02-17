@@ -737,7 +737,6 @@ class VectorialAsofDateParameterNodeAtInstant(VectorialParameterNodeAtInstant):
             )
         return VectorialAsofDateParameterNodeAtInstant(node._name, recarray.view(np.recarray), node._instant_str)
 
-
     def __getitem__(self, key):
         # If the key is a string, just get the subnode
         if isinstance(key, str):
