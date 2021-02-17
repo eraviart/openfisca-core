@@ -523,7 +523,12 @@ class ParameterNodeAtInstant(object):
     def __getitem__(self, key):
         # If fancy indexing is used, cast to a vectorial node
         if isinstance(key, np.ndarray):
+            # If fancy indexing is used wit a datetime64, cast to a vectorial node supporting datetime64
+            if np.issubdtype(key.dtype, np.datetime64):
+                return VectorialAsofDateParameterNodeAtInstant.build_from_node(self)[key]
+
             return VectorialParameterNodeAtInstant.build_from_node(self)[key]
+
         return self._children[key]
 
     def __iter__(self):
@@ -701,6 +706,64 @@ class VectorialParameterNodeAtInstant(object):
             if np.issubdtype(result.dtype, np.record):
                 return VectorialParameterNodeAtInstant(self._name, result.view(np.recarray), self._instant_str)
 
+            return result
+
+
+class VectorialAsofDateParameterNodeAtInstant(VectorialParameterNodeAtInstant):
+    """
+        Parameter node of the legislation at a given instant which has been vectorized along osme date.
+        Vectorized parameters allow requests such as parameters.housing_benefit[date], where date is a np.datetime64 type vector
+    """
+
+    @staticmethod
+    def build_from_node(node):
+        VectorialParameterNodeAtInstant.check_node_vectorisable(node)
+        subnodes_name = node._children.keys()
+        # Recursively vectorize the children of the node
+        vectorial_subnodes = tuple([
+            VectorialAsofDateParameterNodeAtInstant.build_from_node(node[subnode_name]).vector
+            if isinstance(node[subnode_name], ParameterNodeAtInstant)
+            else node[subnode_name]
+            for subnode_name in subnodes_name
+            ])
+        # A vectorial node is a wrapper around a numpy recarray
+        # We first build the recarray
+        recarray = np.array(
+            [vectorial_subnodes],
+            dtype = [
+                (subnode_name, subnode.dtype if isinstance(subnode, np.recarray) else 'float')
+                for (subnode_name, subnode) in zip(subnodes_name, vectorial_subnodes)
+                ]
+            )
+        return VectorialAsofDateParameterNodeAtInstant(node._name, recarray.view(np.recarray), node._instant_str)
+
+
+    def __getitem__(self, key):
+        # If the key is a string, just get the subnode
+        if isinstance(key, str):
+            key = np.array([key], dtype = 'datetime64[D]')
+            return self.__getattr__(key)
+        # If the key is a vector, e.g. ['1990-11-25', '1983-04-17', '1969-09-09']
+        elif isinstance(key, np.ndarray):
+            assert np.issubdtype(key.dtype, np.datetime64)
+            names = list(self.dtype.names)  # Get all the names of the subnodes, e.g. ['ne_avant_X', 'ne_apres_X', 'ne_apres_Y']
+            values = np.asarray([value for value in self.vector[0]])
+            names = [
+                name
+                for name in names
+                if not name.startswith("ne_avant")
+                ]
+            names = [
+                np.datetime64(
+                    "-".join(list(reversed(name[9:].split("_"))))
+                    )
+                for name in names
+                ]
+            conditions = sum([
+                name <= key
+                for name in names
+                ])
+            result = values[conditions]
             return result
 
 
