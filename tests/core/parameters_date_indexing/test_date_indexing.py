@@ -1,6 +1,6 @@
 import numpy as np
 import os
-import pytest
+# import pytest
 
 
 from openfisca_core.tools import assert_near
