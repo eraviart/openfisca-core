@@ -754,7 +754,7 @@ class VectorialAsofDateParameterNodeAtInstant(VectorialParameterNodeAtInstant):
                 ]
             names = [
                 np.datetime64(
-                    "-".join(list(reversed(name[9:].split("_"))))
+                    "-".join(name[9:].split("_"))
                     )
                 for name in names
                 ]
@@ -763,6 +763,11 @@ class VectorialAsofDateParameterNodeAtInstant(VectorialParameterNodeAtInstant):
                 for name in names
                 ])
             result = values[conditions]
+
+            # If the result is not a leaf, wrap the result in a vectorial node.
+            if np.issubdtype(result.dtype, np.record):
+                return VectorialAsofDateParameterNodeAtInstant(self._name, result.view(np.recarray), self._instant_str)
+
             return result
 
 
