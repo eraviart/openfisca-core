@@ -17,18 +17,20 @@ from numpy import (
     digitize,
     dot,
     finfo,
-    float as float_,
+    float_,
     hstack,
     inf,
+    int_,
     maximum as max_,
     minimum as min_,
-    ndarray,
     ones,
     outer,
     round as round_,
     size,
     tile,
     )
+
+from numpy.typing import ArrayLike
 
 from openfisca_core import commons
 from openfisca_core import tools
@@ -46,7 +48,7 @@ class EmptyArgumentError(IndexError):
             class_name: str,
             method_name: str,
             arg_name: str,
-            arg_value: Union[List, ndarray]
+            arg_value: Union[List, ArrayLike]
             ) -> None:
         message = [
             f"'{class_name}.{method_name}' can't be run with an empty '{arg_name}':\n",
@@ -106,9 +108,9 @@ class TaxScaleLike(abc.ABC):
     @abc.abstractmethod
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             right: bool,
-            ) -> ndarray[float]:
+            ) -> float_:
         ...
 
     @abc.abstractmethod
@@ -143,7 +145,7 @@ class AbstractTaxScale(TaxScaleLike):
 
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             right: bool,
             ) -> NoReturn:
         raise NotImplementedError(
@@ -299,10 +301,10 @@ class RateTaxScaleLike(TaxScaleLike, abc.ABC):
 
     def bracket_indices(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             factor: float = 1.0,
             round_decimals: Optional[int] = None,
-            ) -> ndarray[int]:
+            ) -> int_:
         """
         Compute the relevant bracket indices for the given tax bases.
 
@@ -372,7 +374,7 @@ class AbstractRateTaxScale(RateTaxScaleLike):
 
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             right: bool,
             ) -> NoReturn:
         raise NotImplementedError(
@@ -385,9 +387,9 @@ class SingleAmountTaxScale(AmountTaxScaleLike):
 
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             right: bool = False,
-            ) -> ndarray[float]:
+            ) -> float_:
         """
         Matches the input amount to a set of brackets and returns the single cell value
         that fits within that bracket.
@@ -402,9 +404,9 @@ class MarginalAmountTaxScale(AmountTaxScaleLike):
 
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             right: bool = False,
-            ) -> ndarray[float]:
+            ) -> float_:
         """
         Matches the input amount to a set of brackets and returns the sum of cell
         values from the lowest bracket to the one containing the input.
@@ -419,9 +421,9 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
 
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             right: bool = False,
-            ) -> ndarray[float]:
+            ) -> float_:
         if len(self.rates) == 1:
             return tax_base * self.rates[0]
 
@@ -500,10 +502,10 @@ class MarginalRateTaxScale(RateTaxScaleLike):
 
     def calc(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             factor: float = 1.0,
             round_base_decimals: Optional[int] = None,
-            ) -> ndarray[float]:
+            ) -> float_:
         """
         Compute the tax amount for the given tax bases by applying the taxscale.
 
@@ -569,10 +571,10 @@ class MarginalRateTaxScale(RateTaxScaleLike):
 
     def marginal_rates(
             self,
-            tax_base: Union[ndarray[int], ndarray[float]],
+            tax_base: Union[int_, float_],
             factor: float = 1.0,
             round_base_decimals: Optional[int] = None,
-            ) -> ndarray[float]:
+            ) -> float_:
         """
         Compute the marginal tax rates relevant for the given tax bases.
 
