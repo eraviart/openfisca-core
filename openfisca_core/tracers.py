@@ -1,17 +1,25 @@
-# -*- coding: utf-8 -*-
-
 from __future__ import annotations
 
-import os
-import json
-import time
 import csv
-from itertools import groupby
-from dataclasses import dataclass, field
-
-import numpy as np
-from typing import List, Dict, Optional, Iterator, Any
 import importlib.resources as pkg_resources
+import json
+import os
+import time
+from dataclasses import dataclass, field
+from itertools import groupby
+from typing import Any, Dict, Iterator, List, Optional, Union
+
+from numpy import (
+    array2string,
+    dtype,
+    issubdtype,
+    max as max_,
+    mean,
+    min as min_,
+    ndarray,
+    )
+
+from numpy.typing import ArrayLike
 
 from openfisca_core.parameters import ParameterNodeAtInstant, VectorialParameterNodeAtInstant, ALLOWED_PARAM_TYPES
 from openfisca_core.indexed_enums import EnumArray
@@ -41,7 +49,7 @@ class TracingParameterNodeAtInstant:
             name = self.parameter_node_at_instant._name
         else:
             name = '.'.join([self.parameter_node_at_instant._name, key])
-        if isinstance(child, (np.ndarray,) + ALLOWED_PARAM_TYPES):
+        if isinstance(child, (ndarray,) + ALLOWED_PARAM_TYPES):
             self.tracer.record_parameter_access(name, period, child)
         return child
 
@@ -54,7 +62,7 @@ class SimpleTracer:
     def record_calculation_start(self, variable: str, period):
         self.stack.append({'name': variable, 'period': period})
 
-    def record_calculation_result(self, value: np.ndarray):
+    def record_calculation_result(self, value: ArrayLike):
         pass  # ignore calculation result
 
     def record_parameter_access(self, parameter: str, period, value):
@@ -75,7 +83,7 @@ class TraceNode:
     parent: Optional[TraceNode] = None
     children: List[TraceNode] = field(default_factory = list)
     parameters: List[TraceNode] = field(default_factory = list)
-    value: np.ndarray = None
+    value: Optional[ArrayLike] = None
     start: float = 0
     end: float = 0
 
@@ -126,7 +134,7 @@ class FullTracer:
 
         self._current_node.start = time_in_s
 
-    def record_calculation_result(self, value: np.ndarray):
+    def record_calculation_result(self, value: ArrayLike):
         self._current_node.value = value
 
     def record_calculation_end(self):
@@ -229,12 +237,12 @@ class FlatTrace:
             for key, flat_trace in self.get_trace().items()
             }
 
-    def serialize(self, value: np.ndarray) -> List:
+    def serialize(self, value: Optional[ArrayLike]) -> Optional[Union[List, ArrayLike]]:
         if isinstance(value, EnumArray):
             value = value.decode_to_str()
-        if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.dtype(bytes)):
-            value = value.astype(np.dtype(str))
-        if isinstance(value, np.ndarray):
+        if isinstance(value, ndarray) and issubdtype(value.dtype, dtype(bytes)):
+            value = value.astype(dtype(str))
+        if isinstance(value, ndarray):
             value = value.tolist()
         return value
 
@@ -266,7 +274,7 @@ class ComputationLog:
         if isinstance(value, EnumArray):
             value = value.decode_to_str()
 
-        return np.array2string(value, max_line_width = float("inf"))
+        return array2string(value, max_line_width = float("inf"))
 
     def _get_node_log(self, node, depth, aggregate) -> List[str]:
 
@@ -274,7 +282,7 @@ class ComputationLog:
             value = node.value
             if aggregate:
                 try:
-                    formatted_value = str({'avg': np.mean(value), 'max': np.max(value), 'min': np.min(value)})
+                    formatted_value = str({'avg': mean(value), 'max': max_(value), 'min': min_(value)})
                 except TypeError:
                     formatted_value = "{'avg': '?', 'max': '?', 'min': '?'}"
             else:
