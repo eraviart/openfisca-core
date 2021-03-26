@@ -1,14 +1,12 @@
-# -*- coding: utf-8 -*-
-
 import datetime
 import inspect
 import re
 import textwrap
+from datetime import date
+from sortedcontainers.sorteddict import SortedDict
 from typing import Optional
 
-import numpy as np
-from sortedcontainers.sorteddict import SortedDict
-from datetime import date
+from numpy import array, empty, bool_, int32, float32
 
 from openfisca_core import periods
 from openfisca_core.entities import Entity
@@ -19,21 +17,21 @@ from openfisca_core.tools import eval_expression
 
 VALUE_TYPES = {
     bool: {
-        'dtype': np.bool,
+        'dtype': bool_,
         'default': False,
         'json_type': 'boolean',
         'formatted_value_type': 'Boolean',
         'is_period_size_independent': True
         },
     int: {
-        'dtype': np.int32,
+        'dtype': int32,
         'default': 0,
         'json_type': 'integer',
         'formatted_value_type': 'Int',
         'is_period_size_independent': False
         },
     float: {
-        'dtype': np.float32,
+        'dtype': float32,
         'default': 0,
         'json_type': 'number',
         'formatted_value_type': 'Float',
@@ -412,7 +410,7 @@ class Variable(object):
                     )
 
         try:
-            value = np.array([value], dtype = self.dtype)[0]
+            value = array([value], dtype = self.dtype)[0]
         except (TypeError, ValueError):
             if (self.value_type == date):
                 error_message = "Can't deal with date: '{}'.".format(value)
@@ -426,7 +424,7 @@ class Variable(object):
         return value
 
     def default_array(self, array_size):
-        array = np.empty(array_size, dtype = self.dtype)
+        array = empty(array_size, dtype = self.dtype)
         if self.value_type == Enum:
             array.fill(self.default_value.index)
             return EnumArray(array, self.possible_values)
