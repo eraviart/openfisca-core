@@ -5,10 +5,13 @@ from typing import Any, NoReturn, Optional, Type, Union
 
 from numpy import (
     asarray,
+    int_,
     int16,
     logical_not as not_,
     ndarray,
+    object_,
     select,
+    str_,
     )
 
 ENUM_ARRAY_DTYPE = int16
@@ -37,9 +40,9 @@ class Enum(BaseEnum):
             cls,
             array: Union[
                 "EnumArray",
-                ndarray[str],
-                ndarray["Enum"],
-                ndarray[int],
+                str_,
+                object_,
+                int_,
                 ],
             ) -> "EnumArray":
         """
@@ -65,16 +68,16 @@ class Enum(BaseEnum):
         >>> encoded_array[0]
         2  # Encoded value
         """
-        if type(array) is EnumArray:
+        if isinstance(array, EnumArray):
             return array
 
-        if array.dtype.kind in {'U', 'S'}:  # String array
+        if isinstance(array, ndarray) and array.dtype.kind in {'U', 'S'}:  # String array
             array = select(
                 [array == item.name for item in cls],
                 [item.index for item in cls],
                 ).astype(ENUM_ARRAY_DTYPE)
 
-        elif array.dtype.kind == 'O':  # Enum items arrays
+        elif isinstance(array, ndarray) and array.dtype.kind == 'O':  # Enum items arrays
             # Ensure we are comparing the comparable. The problem this fixes:
             # On entering this method "cls" will generally come from
             # variable.possible_values, while the array values may come from directly
@@ -105,7 +108,7 @@ class EnumArray(ndarray):
     # https://docs.scipy.org/doc/numpy-1.13.0/user/basics.subclassing.html#slightly-more-realistic-example-attribute-added-to-existing-array.
     def __new__(
             cls,
-            input_array: ndarray[int],
+            input_array: int_,
             possible_values: Optional[Type["Enum"]] = None,
             ) -> "EnumArray":
         obj = asarray(input_array).view(cls)
@@ -113,7 +116,7 @@ class EnumArray(ndarray):
         return obj
 
     # See previous comment
-    def __array_finalize__(self, obj: Optional[ndarray[int]]) -> None:
+    def __array_finalize__(self, obj: Optional[int_]) -> None:
         if obj is None:
             return
 
@@ -147,7 +150,7 @@ class EnumArray(ndarray):
     __and__ = _forbidden_operation
     __or__ = _forbidden_operation
 
-    def decode(self) -> ndarray["Enum"]:
+    def decode(self) -> object_:
         """Return the array of enum items corresponding to self.
 
         For instance:
@@ -163,7 +166,7 @@ class EnumArray(ndarray):
             list(self.possible_values),
             )
 
-    def decode_to_str(self) -> ndarray[str]:
+    def decode_to_str(self) -> str_:
         """Return the array of string identifiers corresponding to self.
 
         For instance:
